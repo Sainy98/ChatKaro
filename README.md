@@ -18,11 +18,4 @@ Chat Karo is a real-time chat application where users can join chat rooms and co
 - Users can see who is online and who was last seen.
 - Responsive design with Bootstrap.
 
-## Installation
-
 ### Frontend
-
-1. **Clone the Repository:**
-   ```bash
-   git clone https://github.com/yourusername/ChatKaro.git
-   cd ChatKaro/frontend
