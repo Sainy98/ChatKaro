@@ -34,7 +34,7 @@ function ChatRoom() {
             socket.off('receive_message', handleReceiveMessage);
             socket.off('update_online_users', handleUpdateOnlineUsers);
         };
-    }, [roomCode]);
+    }, [roomCode,handleReceiveMessage, handleUpdateOnlineUsers]);
 
     const handleReceiveMessage = (data) => {
         console.log('Received message:', data); // Debugging line
