@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import io from 'socket.io-client';
 import { useParams } from 'react-router-dom';
 
-const socket = io.connect('http://localhost:3001');
+const socket = io.connect('https://chatkaro-9i87.onrender.com');
 
 function ChatRoom() {
     const { roomCode } = useParams();
