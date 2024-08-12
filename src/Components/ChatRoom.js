@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import io from 'socket.io-client';
 import { useParams } from 'react-router-dom';
 
@@ -11,6 +11,21 @@ function ChatRoom() {
     const [message, setMessage] = useState('');
     const [messageList, setMessageList] = useState([]);
     const [onlineUsers, setOnlineUsers] = useState([]);
+
+    // useCallback to memoize the function
+    const handleReceiveMessage = useCallback((data) => {
+        console.log('Received message:', data); // Debugging line
+        setMessageList((list) => {
+            const updatedList = [...list, data];
+            localStorage.setItem(`messages_${roomCode}`, JSON.stringify(updatedList));
+            return updatedList;
+        });
+    }, [roomCode]);
+
+    // useCallback to memoize the function
+    const handleUpdateOnlineUsers = useCallback((users) => {
+        setOnlineUsers(users);
+    }, []);
 
     useEffect(() => {
         // Reset message list when roomCode changes
@@ -34,20 +49,7 @@ function ChatRoom() {
             socket.off('receive_message', handleReceiveMessage);
             socket.off('update_online_users', handleUpdateOnlineUsers);
         };
-    }, [roomCode,handleReceiveMessage, handleUpdateOnlineUsers]);
-
-    const handleReceiveMessage = (data) => {
-        console.log('Received message:', data); // Debugging line
-        setMessageList((list) => {
-            const updatedList = [...list, data];
-            localStorage.setItem(`messages_${roomCode}`, JSON.stringify(updatedList));
-            return updatedList;
-        });
-    };
-
-    const handleUpdateOnlineUsers = (users) => {
-        setOnlineUsers(users);
-    };
+    }, [roomCode, handleReceiveMessage, handleUpdateOnlineUsers]); // Include memoized functions in dependency array
 
     const handleJoin = () => {
         if (username !== '') {
