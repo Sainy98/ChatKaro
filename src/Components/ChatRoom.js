@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import io from 'socket.io-client';
 import { useParams } from 'react-router-dom';
 
@@ -12,6 +12,8 @@ function ChatRoom() {
     const [message, setMessage] = useState('');
     const [messageList, setMessageList] = useState([]);
     const [onlineUsers, setOnlineUsers] = useState([]);
+    const [typingUsers, setTypingUsers] = useState([]);
+    const typingTimeoutRef = useRef(null);
 
     // useCallback to memoize the function
     const handleReceiveMessage = useCallback((data) => {
@@ -26,6 +28,19 @@ function ChatRoom() {
     // useCallback to memoize the function
     const handleUpdateOnlineUsers = useCallback((users) => {
         setOnlineUsers(users);
+    }, []);
+
+    const handleDisplayTyping = useCallback((data) => {
+        setTypingUsers((prev) => {
+            if (!prev.includes(data.username)) {
+                return [...prev, data.username];
+            }
+            return prev;
+        });
+    }, []);
+
+    const handleHideTyping = useCallback((data) => {
+        setTypingUsers((prev) => prev.filter((username) => username !== data.username));
     }, []);
 
     useEffect(() => {
@@ -44,13 +59,17 @@ function ChatRoom() {
         // Register event listeners
         socket.on('receive_message', handleReceiveMessage);
         socket.on('update_online_users', handleUpdateOnlineUsers);
+        socket.on('display_typing', handleDisplayTyping);
+        socket.on('hide_typing', handleHideTyping);
 
         // Cleanup function
         return () => {
             socket.off('receive_message', handleReceiveMessage);
             socket.off('update_online_users', handleUpdateOnlineUsers);
+            socket.off('display_typing', handleDisplayTyping);
+            socket.off('hide_typing', handleHideTyping);
         };
-    }, [roomCode, handleReceiveMessage, handleUpdateOnlineUsers]); // Include memoized functions in dependency array
+    }, [roomCode, handleReceiveMessage, handleUpdateOnlineUsers, handleDisplayTyping, handleHideTyping]); // Include memoized functions in dependency array
 
     const handleJoin = () => {
         if (username !== '') {
@@ -79,7 +98,18 @@ function ChatRoom() {
 
             socket.emit('send_message', messageData);
             setMessage('');
+            socket.emit('stop_typing', {room: roomCode })
         }
+    };
+
+    const handleTyping = () => {
+        socket.emit('typing', { room: roomCode });
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+        typingTimeoutRef.current = setTimeout(() => {
+            socket.emit('stop_typing', { room: roomCode });
+        }, 2000); // Adjust the delay as needed
     };
 
     return (
@@ -123,12 +153,17 @@ function ChatRoom() {
                             </div>
                         ))}
                     </div>
+                    <div className="typing-status">
+                        {typingUsers.length > 0 && <p>{typingUsers.join(', ')} {typingUsers.length > 1 ? 'are' : 'is'} typing...</p>}
+                    </div>
                     <div className="message-input">
                         <input 
                             type="text" 
                             value={message} 
                             placeholder='Type your message'
-                            onChange={(e) => setMessage(e.target.value)} 
+                            onChange={(e) =>{ setMessage(e.target.value);
+                                handleTyping();
+                             } } 
                         />
                         <button onClick={sendMessage}>Send <i className="bi bi-send-fill"></i></button>
                     </div>
