@@ -1,9 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Outfit:wght@100..900&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap');
+
 :root{
   --primary:#007bff;
   --secondary:#FDFFE2;
   --tertiary:#5A72A0;
-  --freeColor:#1A2130;
+  --freeColor: #0056b3;
 }
 body{
   font-family: "Inter", sans-serif;
@@ -35,11 +36,11 @@ body{
     display: inline-flex;
     list-style: none;
     overflow-x: auto;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     min-width: 100%;
     gap: 8px;
     padding: 12px 0px;
-    background-color: var(--tertiary); 
+    background-color: var(--freeColor); 
     display: inline-flex;
     justify-content: center;
     margin: auto;
@@ -213,4 +214,70 @@ body{
 .chat-nav{
     background-color: white;
    
+}
+
+/* Style for the button when page is not yet reloaded */
+.btn-reload {
+    background-color: var(--primary);/* Blue background */
+    color: var(--secondary);
+    border: none;
+    cursor: pointer;
+    position: fixed;
+    font-size: 50px;
+    font-weight: bold;
+    top: 0;
+    width: 600px;
+    max-width: -webkit-fill-available;
+    height: 15%;
+    transition: 2s ease-in;
+
+    box-shadow: 0px 3px 10px 0px black;
+    .bi-arrow-clockwise {
+        display: block;
+         
+    }
+}
+
+.btn-reload:hover {
+    background-color: var(--freeColor); /* Darker blue on hover */
+}
+
+/* Style for the button after page has been reloaded */
+.btn-reloaded {
+    background-color: var(--primary);/* Blue background */
+    color: var(--secondary);
+    border: none;
+    cursor: pointer;
+    position: fixed;
+    font-size: 50px;
+    font-weight: bold;
+    top: -15;
+    width: 600px;
+    height: 0%;
+    max-width: -webkit-fill-available;
+    transition: 2s ease-out;
+    
+
+    .bi-arrow-clockwise {
+        display: none;
+        transition: 45s ease-in-out  ;   
+    }
+    
+}
+
+.bi-person-plus-fill{
+    background-color: var(--freeColor);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    /* position: fixed; */
+    /* font-size: 20px; */
+    /* font-weight: bold; */
+    padding: 5px 10px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+    font-style: unset;
+}
+.bi-person-plus-fill:hover {
+    background-color: #218838; /* Darker green on hover */
 }

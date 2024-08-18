@@ -13,11 +13,48 @@ function ChatRoom() {
     const [messageList, setMessageList] = useState([]);
     const [onlineUsers, setOnlineUsers] = useState([]);
     const [typingUsers, setTypingUsers] = useState([]);
+    const [hasReloaded, setHasReloaded] = useState(false);
     const typingTimeoutRef = useRef(null);
+    const broadcastChannelRef = useRef(null);
+ 
 
-    // useCallback to memoize the function
+    useEffect(() => {
+        // Setup BroadcastChannel to communicate between tabs
+        broadcastChannelRef.current = new BroadcastChannel(`chat-room-${roomCode}`);
+
+        broadcastChannelRef.current.onmessage = (event) => {
+            if (event.data === 'new_tab_opened') {
+                // Disconnect socket and disable chat in this tab
+                socket.disconnect();
+                setShowChat(false);
+               
+            }
+        };
+
+        return () => {
+            if (broadcastChannelRef.current) {
+                broadcastChannelRef.current.close();
+            }
+        };
+    }, [roomCode]);
+
+    useEffect(() => {
+        const existingTab = sessionStorage.getItem(`chat-room-open-${roomCode}`);
+
+        if (existingTab) {
+            broadcastChannelRef.current.postMessage('new_tab_opened');
+        } else {
+            sessionStorage.setItem(`chat-room-open-${roomCode}`, 'true');
+            
+        }
+
+        return () => {
+            sessionStorage.removeItem(`chat-room-open-${roomCode}`);
+            
+        };
+    }, [roomCode]);
+
     const handleReceiveMessage = useCallback((data) => {
-        console.log('Received message:', data); // Debugging line
         setMessageList((list) => {
             const updatedList = [...list, data];
             localStorage.setItem(`messages_${roomCode}`, JSON.stringify(updatedList));
@@ -25,7 +62,6 @@ function ChatRoom() {
         });
     }, [roomCode]);
 
-    // useCallback to memoize the function
     const handleUpdateOnlineUsers = useCallback((users) => {
         setOnlineUsers(users);
     }, []);
@@ -44,7 +80,6 @@ function ChatRoom() {
     }, []);
 
     useEffect(() => {
-        // Reset message list when roomCode changes
         const storedUsername = localStorage.getItem('username');
         if (storedUsername) {
             setUsername(storedUsername);
@@ -52,30 +87,31 @@ function ChatRoom() {
             setShowChat(true);
         }
 
-        // Fetch messages for the new room
         const storedMessages = JSON.parse(localStorage.getItem(`messages_${roomCode}`)) || [];
         setMessageList(storedMessages);
 
-        // Register event listeners
         socket.on('receive_message', handleReceiveMessage);
         socket.on('update_online_users', handleUpdateOnlineUsers);
         socket.on('display_typing', handleDisplayTyping);
         socket.on('hide_typing', handleHideTyping);
 
-        // Cleanup function
         return () => {
             socket.off('receive_message', handleReceiveMessage);
             socket.off('update_online_users', handleUpdateOnlineUsers);
             socket.off('display_typing', handleDisplayTyping);
             socket.off('hide_typing', handleHideTyping);
         };
-    }, [roomCode, handleReceiveMessage, handleUpdateOnlineUsers, handleDisplayTyping, handleHideTyping]); // Include memoized functions in dependency array
+    }, [roomCode, handleReceiveMessage, handleUpdateOnlineUsers, handleDisplayTyping, handleHideTyping]);
 
     const handleJoin = () => {
         if (username !== '') {
-            localStorage.setItem('username', username); // Save username to localStorage
-            socket.emit('join_room', { room: roomCode, username });
-            setShowChat(true);
+            // Only set session storage and local storage if not already set
+            if (!sessionStorage.getItem(`joined_${roomCode}`)) {
+                localStorage.setItem('username', username);
+                sessionStorage.setItem(`joined_${roomCode}`, username);
+                socket.emit('join_room', { room: roomCode, username });
+                setShowChat(true);
+            }
         }
     };
 
@@ -84,7 +120,7 @@ function ChatRoom() {
             const messageData = {
                 room: roomCode,
                 content: {
-                    message: message,
+                    message,
                     sender: username,
                     time: new Date().toISOString(),
                 },
@@ -98,7 +134,7 @@ function ChatRoom() {
 
             socket.emit('send_message', messageData);
             setMessage('');
-            socket.emit('stop_typing', {room: roomCode })
+            socket.emit('stop_typing', { room: roomCode });
         }
     };
 
@@ -109,11 +145,47 @@ function ChatRoom() {
         }
         typingTimeoutRef.current = setTimeout(() => {
             socket.emit('stop_typing', { room: roomCode });
-        }, 2000); // Adjust the delay as needed
+        }, 2000);
     };
+
+    useEffect(() => {
+        // Check if the page has been reloaded in this session
+        const reloaded = sessionStorage.getItem('page_reloaded');
+        if (reloaded) {
+            setHasReloaded(true);
+        }
+    }, []);
+
+    const handleReload = () => {
+        if (!hasReloaded) {
+            sessionStorage.setItem('page_reloaded', 'true'); // Mark page as reloaded
+            window.location.reload(); // Reload the current page
+        }
+    };
+
+    const handleInvite = () => {
+        // Generate the invite link
+        const inviteLink = `${window.location.origin}/chat/${roomCode}`;
+
+        // Copy the invite link to the clipboard
+        navigator.clipboard.writeText(inviteLink).then(() => {
+            alert('Invite link copied to clipboard!');
+        }).catch(err => {
+            console.error('Failed to copy invite link:', err);
+        });
+    };
+
 
     return (
         <div className="chat-room">
+         <button 
+            onClick={handleReload} 
+            disabled={hasReloaded} 
+            className={hasReloaded ? 'btn-reloaded' : 'btn-reload'}
+        >
+            {<i class="bi bi-arrow-clockwise"></i>}     
+        </button>
+
             {!showChat ? (
                 <div className="join-chat">
                     <input 
@@ -127,14 +199,19 @@ function ChatRoom() {
             ) : (
                 <div className="chat-container">
                     <nav className="chat-nav">
-                        <div className="RoomCode">Room Code: <span>{roomCode}</span> | <i className="bi bi-people-fill"></i> {onlineUsers.length} </div>
+                        <div className="RoomCode">Room Code: <span>{roomCode}</span> | <i className="bi bi-people-fill"></i> {onlineUsers.length } | <i class="bi bi-person-plus-fill" onClick={handleInvite}> Invite</i>
+                        </div>
+                
                         <ul className="OnlineUser">
-                            {onlineUsers.map((user, index) => (
-                                <li key={index}>
-                                    {user.username} {user.username === username ? '(You)' : ''} 
-                                    {user.lastSeen ? `(Last seen: ${new Date(user.lastSeen).toLocaleTimeString()})` : ''}
-                                </li>
-                            ))}
+                            {onlineUsers.length === 0 ? (
+                                <li className="connecting-message">Connecting...</li>
+                            ) : (
+                                onlineUsers.map((user, index) => (
+                                    <li key={index}>
+                                        {user.username} {user.username === username ? '(You)' : ''} 
+                                    </li>
+                                ))
+                            )}
                         </ul>
                     </nav>
                     <div className="message-list">
